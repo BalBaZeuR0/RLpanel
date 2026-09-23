@@ -17,6 +17,7 @@ from rlpanel import paths
 from rlpanel.server.files import files_router
 from rlpanel.server.hub import Hub
 from rlpanel.server.store import Store
+from rlpanel.server.watcher import FolderWatcher, watch_router
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -47,8 +48,10 @@ class Batch(BaseModel):
 
 def create_app(db_path: str | Path | None = None, *, heartbeat_timeout: float = 30.0,
                watch_dirs: Sequence[str] = (), watch_interval: float = 2.0) -> FastAPI:
-    store = Store(db_path or paths.db_path())
+    db_file = Path(db_path or paths.db_path())
+    store = Store(db_file)
     hub = Hub()
+    watcher = FolderWatcher(store, hub.publish, interval=watch_interval, state_file=db_file.parent / "watch.json")
 
     async def reaper() -> None:
         while True:
@@ -60,16 +63,24 @@ def create_app(db_path: str | Path | None = None, *, heartbeat_timeout: float = 
     async def lifespan(app: FastAPI):
         hub.loop = asyncio.get_running_loop()
         task = asyncio.create_task(reaper())
+        for directory in watch_dirs:
+            try:
+                watcher.add(directory)
+            except NotADirectoryError as exc:
+                print(f"[rlpanel] izlenemedi: {exc}")
+        watcher.start()
         try:
             yield
         finally:
             task.cancel()
+            watcher.stop()
             store.close()
 
     app = FastAPI(title="rlpanel", lifespan=lifespan)
-    app.state.store, app.state.hub = store, hub
+    app.state.store, app.state.hub, app.state.watcher = store, hub, watcher
     app.include_router(core_router(store, hub))
     app.include_router(files_router(store, hub))
+    app.include_router(watch_router(watcher))
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:

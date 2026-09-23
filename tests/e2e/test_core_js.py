@@ -71,3 +71,34 @@ def test_shell_renders_and_theme_toggles(page):
     theme = page.evaluate("document.documentElement.dataset.theme")
     page.click("#theme-toggle")
     assert page.evaluate("document.documentElement.dataset.theme") != theme
+
+
+def test_chart_model_csv_svg_png(page):
+    page.goto(page.base_url + "/")
+    result = page.evaluate("""async () => {
+      const ch = await import('/js/charts.js');
+      const lines = [
+        {label: 'bu run', color: ch.LIVE_COLOR, points: [[0, 1, 100], [10, 3, 101], [20, 5, 103]]},
+        {label: 'ref', color: ch.PALETTE[0], points: [[0, 2, 50], [20, 4, 52]]},
+      ];
+      const model = ch.buildModel(lines, {smoothing: 0.5, xmode: 'step', log: false});
+      const timeModel = ch.buildModel(lines, {smoothing: 0, xmode: 'time', log: true});
+      const band = ch.buildModel([lines[0]], {smoothing: 0, xmode: 'step', band: {label: 'ref', color: '#94A3B8',
+        sources: [[[0, 0, null], [20, 10, null]], [[0, 2, null], [20, 12, null]]]}});
+      const png = await ch.svgToPng(ch.modelSVG(model, 'reward'));
+      const head = new Uint8Array(await png.slice(0, 4).arrayBuffer());
+      return {
+        csv: ch.modelCSV(model).split('\\n')[0],
+        rawKept: model.lines[0].rawYs, smoothed: model.lines[0].ys[0],
+        timeXs: timeModel.lines[0].xs, log: timeModel.log,
+        bandMean: band.band.mean.slice(0, 1),
+        svg: ch.modelSVG(band, 'x').includes('fill-opacity="0.18"'),
+        pngHead: Array.from(head),
+      };
+    }""")
+    assert result["csv"] == "adim,bu run,bu run (ham),ref,ref (ham)"
+    assert result["rawKept"] == [1, 3, 5] and result["smoothed"] == 1
+    assert result["timeXs"] == [0, 1, 3] and result["log"] is True
+    assert result["bandMean"] == [1]
+    assert result["svg"] is True
+    assert result["pngHead"] == [0x89, 0x50, 0x4E, 0x47]

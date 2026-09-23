@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 import rlpanel
 from rlpanel import paths
+from rlpanel.server.files import files_router
 from rlpanel.server.hub import Hub
 from rlpanel.server.store import Store
 
@@ -68,6 +69,7 @@ def create_app(db_path: str | Path | None = None, *, heartbeat_timeout: float = 
     app = FastAPI(title="rlpanel", lifespan=lifespan)
     app.state.store, app.state.hub = store, hub
     app.include_router(core_router(store, hub))
+    app.include_router(files_router(store, hub))
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:

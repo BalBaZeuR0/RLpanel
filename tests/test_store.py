@@ -146,3 +146,9 @@ def test_data_survives_reopen(tmp_path):
     second = Store(tmp_path / "panel.db")
     assert second.get_metrics(run_id) == {"x": [[1, 1.0, None]]}
     second.close()
+
+
+def test_deleted_run_id_is_never_reused(store):
+    first = store.create_run("P", "r")
+    store.delete_run(first)
+    assert store.create_run("P", "r") != first

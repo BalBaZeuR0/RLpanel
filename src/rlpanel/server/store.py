@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS project(
     created_at REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS run(
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- silinen run'ın id'si (ve linki) başka run'a geçmesin
     project_id INTEGER NOT NULL REFERENCES project(id),
     name TEXT NOT NULL,
     seed INTEGER,

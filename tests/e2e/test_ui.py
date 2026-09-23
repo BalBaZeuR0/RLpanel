@@ -137,3 +137,21 @@ def test_run_page_zip_contains_data_and_pngs(page, live_server):
 def test_missing_run_shows_message(page, live_server):
     page.goto(page.base_url + "/#/run/99999")
     page.get_by_text("Run bulunamadı").wait_for()
+
+
+def test_compare_page_overlays_runs_and_band(page, live_server):
+    a = make_run(live_server.url, name="seed0", metrics=reward_points(1.0))
+    b = make_run(live_server.url, name="seed1", metrics=reward_points(2.0))
+    c = make_run(live_server.url, name="seed2", metrics=reward_points(3.0))
+    page.goto(page.base_url + f"/#/compare?ids={a},{b}")
+    page.locator(".compare-bar .chip").nth(1).wait_for()
+    page.locator(".chart-card").first.wait_for()
+    page.select_option('select[aria-label="Run ekle"]', str(c))
+    page.locator(".compare-bar .chip", has_text="seed2").wait_for()
+    assert f"ids={a},{b},{c}" in page.url
+    page.get_by_label("Ortalama ± σ").check()
+    card = page.locator('.chart-card[data-key="rollout/ep_rew_mean"]')
+    with page.expect_download() as info:
+        card.get_by_role("button", name="rollout/ep_rew_mean CSV indir").click()
+    header = open(info.value.path(), encoding="utf-8").readline()
+    assert "Ortalama ± σ ort" in header

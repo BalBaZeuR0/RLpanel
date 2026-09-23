@@ -22,7 +22,7 @@ bitince tüm grafikler indirilebilir.
 
 | Karar | Seçim | Gerekçe |
 |---|---|---|
-| Dağıtım | Ayrı pip paketi `rlpanel`, ayrı git reposu (`D:\Projects\rlpanel`), projeler `rlpanel @ git+https://github.com/...` ile bağımlı | Tek kaynak kod, tüm projeler güncellemeden faydalanır; internet her zaman var (kullanıcı teyidi) |
+| Dağıtım | Ayrı pip paketi `rlpanel`, ayrı git reposu (`D:\Projects\rlpanel`), uzak: https://github.com/BalBaZeuR0/RLpanel; projeler `rlpanel @ git+https://github.com/BalBaZeuR0/RLpanel` ile bağımlı | Tek kaynak kod, tüm projeler güncellemeden faydalanır; internet her zaman var (kullanıcı teyidi) |
 | Backend | Python, FastAPI + uvicorn, WebSocket ile canlı yayın | RL projeleri zaten Python; ek çalışma zamanı gerekmez |
 | Depolama | SQLite, tek dosya `~/.rlpanel/panel.db` (WAL modu) | Çökmeye dayanıklı, kurulum gerektirmez |
 | Frontend | Paket içinde hazır statik dosyalar (build adımı yok), grafikler uPlot ile | Diğer PC'de Node/npm gerekmez; uPlot 100k+ noktada akıcı |

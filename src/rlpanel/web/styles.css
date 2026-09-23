@@ -61,6 +61,7 @@ p { margin: 0; }
 .conn[data-state="open"] .dot { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .conn[data-state="closed"] .dot { background: var(--danger); }
 main { max-width: 1480px; margin: 0 auto; padding: var(--s5); outline: none; }
+main:focus, main:focus-visible { outline: none; } /* rota değişince programatik odak: halka çizme */
 
 /* düğmeler */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--border-strong);

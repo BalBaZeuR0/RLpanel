@@ -123,6 +123,17 @@ kaydırıcısı, log ölçek, hover'da değer.
   + `console.log`). PNG'ler tarayıcıda üretilip zip'e eklenir.
 - Karşılaştırma grafikleri de aynı şekilde indirilebilir.
 
+### 6.3a Canlı run'ı önceki eğitimlerle karşılaştırma
+- Run detayında **"Önceki eğitimlerle karşılaştır"** seçicisi: aynı projeden (varsayılan) veya
+  herhangi bir projeden bitmiş run'lar seçilir; seçilenler her grafiğe **referans çizgisi** olarak
+  (soluk renk, canlı run vurgulu) üst üste çizilir. Canlı run güncellendikçe grafikler de güncellenir.
+- Hızlı seçimler: "aynı projenin son run'ı", "aynı projenin en iyi run'ı" (son `ep_rew_mean`'e göre),
+  "aynı config adı / seed grubu".
+- Birden çok seed'li gruplar için isteğe bağlı **ortalama ± std bandı** olarak gösterim.
+- Üst şeritte **aynı adımda fark**: canlı run'ın şu anki reward'ı, referans run'ın aynı adımdaki
+  değeriyle karşılaştırılır (ör. `+12.4 / %8 önde`). Referans o adıma hiç ulaşmadıysa gösterilmez.
+- Seçim run başına URL'de tutulur (`?ref=12,15`), sayfa yenilenince kaybolmaz.
+
 ### 6.4 Görünüm
 Koyu/açık tema. Görsel tasarım uygulama aşamasında UI skill'i (frontend-design / ui-ux-pro-max)
 ile yapılır.

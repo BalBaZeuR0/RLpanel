@@ -10,6 +10,7 @@ import math
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -54,6 +55,10 @@ CREATE TABLE IF NOT EXISTS log(
     line TEXT
 );
 CREATE INDEX IF NOT EXISTS log_idx ON log(run_id, id);
+CREATE TABLE IF NOT EXISTS meta(
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 REWARD_KEYS = ("rollout/ep_rew_mean", "eval/mean_reward", "reward", "ep_reward", "episode_reward")
@@ -84,7 +89,10 @@ class Store:
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.executescript(SCHEMA)
+        self._db.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('instance_id', ?)", (uuid.uuid4().hex,))
         self._db.commit()
+        # İstemciler bununla veritabanının değiştiğini anlar: eski run id'leri başka run'a yazmasın.
+        self.instance_id = self._db.execute("SELECT value FROM meta WHERE key = 'instance_id'").fetchone()["value"]
 
     def close(self) -> None:
         with self._lock:

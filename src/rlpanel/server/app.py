@@ -44,6 +44,7 @@ class Batch(BaseModel):
     config: dict | None = None
     results: dict | None = None
     status: Literal["running", "finished", "crashed", "stopped"] | None = None
+    instance: str | None = None  # istemcinin run'ı oluşturduğu veritabanı; farklıysa id başka run'a aittir
 
 
 def create_app(db_path: str | Path | None = None, *, heartbeat_timeout: float = 30.0,
@@ -106,7 +107,7 @@ def core_router(store: Store, hub: Hub) -> APIRouter:
 
     @router.get("/health")
     def health() -> dict:
-        return {"app": "rlpanel", "version": rlpanel.__version__}
+        return {"app": "rlpanel", "version": rlpanel.__version__, "instance": store.instance_id}
 
     @router.get("/runs")
     def list_runs(project: str | None = None) -> list[dict]:
@@ -117,7 +118,7 @@ def core_router(store: Store, hub: Hub) -> APIRouter:
         run_id = store.create_run(body.project, body.name, seed=body.seed, host=body.host,
                                   config=body.config, total_steps=body.total_steps)
         hub.publish({"type": "run", "run": with_summary(store.get_run(run_id))})
-        return {"id": run_id}
+        return {"id": run_id, "instance": store.instance_id}
 
     @router.get("/runs/{run_id}")
     def get_run(run_id: int) -> dict:
@@ -145,6 +146,8 @@ def core_router(store: Store, hub: Hub) -> APIRouter:
 
     @router.post("/runs/{run_id}/batch")
     def post_batch(run_id: int, body: Batch) -> dict:
+        if body.instance is not None and body.instance != store.instance_id:
+            raise HTTPException(409, detail="run başka bir panel veritabanına ait")
         run = run_or_404(run_id)
         kept = store.add_metrics(run_id, body.metrics)
         logs = store.add_logs(run_id, body.logs)

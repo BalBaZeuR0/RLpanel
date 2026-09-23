@@ -10,7 +10,7 @@ model.learn(total_timesteps=100_000, callback=PanelCallback(panel))
 panel.finish()`;
 
 export function renderHome(view) {
-  const state = { runs: new Map(), selected: new Set(), filters: { q: "", project: "", status: "", host: "" }, loaded: false };
+  const state = { runs: new Map(), selected: new Set(), filters: { q: "", project: "", status: "", host: "", days: "" }, loaded: false };
   let drawTimer = null;
 
   const listEl = h("div", { class: "run-groups", "aria-live": "polite" });
@@ -21,6 +21,8 @@ export function renderHome(view) {
   const hostSel = h("select", { "aria-label": "Makine filtresi", onchange: (e) => { state.filters.host = e.target.value; draw(); } });
   const statusSel = h("select", { "aria-label": "Durum filtresi", onchange: (e) => { state.filters.status = e.target.value; draw(); } },
     h("option", { value: "" }, "Tüm durumlar"), Object.entries(STATUS).map(([v, label]) => h("option", { value: v }, label)));
+  const dateSel = h("select", { "aria-label": "Tarih filtresi", onchange: (e) => { state.filters.days = e.target.value; draw(); } },
+    [["", "Tüm zamanlar"], ["1", "Son 24 saat"], ["7", "Son 7 gün"], ["30", "Son 30 gün"]].map(([v, label]) => h("option", { value: v }, label)));
   const search = h("input", { type: "search", placeholder: "Run ya da proje ara…", "aria-label": "Run ara",
     oninput: (e) => { state.filters.q = e.target.value.toLowerCase(); draw(); } });
 
@@ -31,7 +33,7 @@ export function renderHome(view) {
         h("button", { class: "btn", type: "button", onclick: openWatch }, icon("folder"), "Klasör izle"),
         h("button", { class: "btn", type: "button", onclick: openUpload }, icon("upload"), "Log yükle"),
         compareBtn)),
-    h("div", { class: "toolbar" }, h("label", { class: "search" }, icon("search"), search), projectSel, statusSel, hostSel),
+    h("div", { class: "toolbar" }, h("label", { class: "search" }, icon("search"), search), projectSel, statusSel, dateSel, hostSel),
     listEl);
 
   async function load() {
@@ -73,8 +75,9 @@ export function renderHome(view) {
       return;
     }
     const f = state.filters;
+    const since = f.days ? Date.now() / 1000 - Number(f.days) * 86400 : null;
     const visible = runs.filter((r) =>
-      (!f.project || r.project === f.project) && (!f.status || r.status === f.status) && (!f.host || r.host === f.host) &&
+      (!f.project || r.project === f.project) && (!f.status || r.status === f.status) && (!f.host || r.host === f.host) && (since == null || r.started_at >= since) &&
       (!f.q || `${r.project} ${r.name}`.toLowerCase().includes(f.q)));
     if (!visible.length) {
       listEl.replaceChildren(h("div", { class: "empty small" }, "Filtreyle eşleşen run yok."));

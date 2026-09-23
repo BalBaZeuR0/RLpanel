@@ -13,7 +13,8 @@ Sink = Callable[[str, str], None]
 
 _lock = threading.Lock()
 _sink: Sink | None = None
-_handler: logging.Handler | None = None
+_factory = None  # logging kayıt fabrikası sarmalayıcısı (kök logger'a handler eklemez)
+_previous_factory = None
 _streams: tuple | None = None  # (orijinal_stdout, orijinal_stderr, tee_stdout, tee_stderr)
 _EMIT_CODE = logging.StreamHandler.emit.__code__
 
@@ -29,20 +30,22 @@ def _inside_stream_handler() -> bool:
     return False
 
 
-class _Handler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        if record.name == "rlpanel" or record.name.startswith("rlpanel."):
-            return
-        sink = _sink
-        if sink is None:
-            return
-        try:
-            message = record.getMessage()
-            if record.exc_info:
-                message += "\n" + logging.Formatter().formatException(record.exc_info)
-            sink(message, record.levelname)
-        except Exception:
-            pass
+def _capture(record: logging.LogRecord) -> None:
+    # Kök logger'a handler eklemek basicConfig()'i etkisiz kılar ve lastResort'u kapatır
+    # (kullanıcı terminalde warning göremez). Bunun yerine kayıtları oluştukları anda yakalıyoruz.
+    name = record.name
+    if not name or name == "rlpanel" or name.startswith("rlpanel."):
+        return
+    sink = _sink
+    if sink is None:
+        return
+    try:
+        message = record.getMessage()
+        if record.exc_info:
+            message += "\n" + logging.Formatter().formatException(record.exc_info)
+        sink(message, record.levelname)
+    except Exception:
+        pass
 
 
 class _Tee:
@@ -89,10 +92,17 @@ def clear_sink(sink: Sink) -> None:
 
 
 def _install() -> None:
-    global _handler, _streams
-    if _handler is None:
-        _handler = _Handler(level=logging.DEBUG)
-        logging.getLogger().addHandler(_handler)
+    global _factory, _previous_factory, _streams
+    if _factory is None:
+        previous = logging.getLogRecordFactory()
+
+        def factory(*args, **kwargs):
+            record = previous(*args, **kwargs)
+            _capture(record)
+            return record
+
+        _previous_factory, _factory = previous, factory
+        logging.setLogRecordFactory(factory)
     if _streams is None and sys.stdout is not None and sys.stderr is not None:
         out, err = sys.stdout, sys.stderr
         tee_out, tee_err = _Tee(out, "INFO"), _Tee(err, "STDERR")
@@ -101,10 +111,11 @@ def _install() -> None:
 
 
 def _uninstall() -> None:
-    global _handler, _streams
-    if _handler is not None:
-        logging.getLogger().removeHandler(_handler)
-        _handler = None
+    global _factory, _previous_factory, _streams
+    if _factory is not None:
+        if logging.getLogRecordFactory() is _factory:
+            logging.setLogRecordFactory(_previous_factory)
+        _factory = _previous_factory = None
     if _streams is not None:
         out, err, tee_out, tee_err = _streams
         if sys.stdout is tee_out:

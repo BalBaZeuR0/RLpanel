@@ -70,6 +70,8 @@ class Panel:
         self._logs: list[list] = []
         self._pending: dict[str, Any] = {}
         self._results: dict[str, Any] = {}
+        self._instance: str | None = None
+        self._warned_step = False
         self._online = False
         self._last_connect_try = float("-inf")
         self._last_sent = 0.0
@@ -83,6 +85,7 @@ class Panel:
         self._prev_excepthook = None
         if self.disabled:
             return
+        self._set_aside_old_buffer()
         self._flush_safe(force=True)  # sunucuyu bul/başlat, run'ı oluştur
         if capture_logs:
             logcapture.set_sink(self.log_text)
@@ -104,6 +107,13 @@ class Panel:
     def log(self, metrics: Mapping[str, Any], step: int) -> None:
         if self.disabled or self._finished:
             return
+        try:
+            step = int(step)
+        except (TypeError, ValueError):
+            if not self._warned_step:
+                self._warned_step = True
+                _warn(f"geçersiz adım ({step!r}); bu metrikler atlandı")
+            return
         now = time.time()
         rows = []
         for key, value in metrics.items():
@@ -112,7 +122,7 @@ class Panel:
             except (TypeError, ValueError):
                 continue
             if math.isfinite(number):
-                rows.append([str(key), int(step), number, now])
+                rows.append([str(key), step, number, now])
         if rows:
             with self._lock:
                 self._metrics.extend(rows)
@@ -208,8 +218,9 @@ class Panel:
     def _flush_safe(self, force: bool = False, drain: bool = False) -> None:
         try:
             with self._send_lock:
-                for _ in range(100 if drain else 1):
-                    if not self._flush(force):
+                for attempt in range(100 if drain else 1):
+                    # yalnız ilk tur zorla yeniden bağlanır; boşaltma turları sunucuyu tekrar tekrar beklemesin
+                    if not self._flush(force and attempt == 0):
                         break
         except Exception as exc:  # hiçbir koşulda eğitime sızmasın
             _warn(f"beklenmeyen hata: {exc!r}")
@@ -254,6 +265,8 @@ class Panel:
                 url, started = launcher.ensure_server()
             if url is None:
                 return
+            if self.run_id is not None and http.get_json(f"{url}/api/health").get("instance") != self._instance:
+                self.run_id = None  # veritabanı değişti: eski id başka bir run'a ait olabilir
             if self.run_id is not None:
                 try:
                     http.get_json(f"{url}/api/runs/{self.run_id}")
@@ -262,7 +275,8 @@ class Panel:
                         raise
                     self.run_id = None
             if self.run_id is None:
-                self.run_id = int(http.post_json(f"{url}/api/runs", self._create)["id"])
+                created = http.post_json(f"{url}/api/runs", self._create)
+                self.run_id, self._instance = int(created["id"]), created.get("instance")
             self._server, self._online, self._warned_offline = url, True, False
             if started and self._open_browser:
                 launcher.open_browser(self.url)
@@ -274,10 +288,10 @@ class Panel:
 
     def _send(self, batch: dict) -> None:
         try:
-            http.post_json(f"{self._server}/api/runs/{self.run_id}/batch", batch)
+            http.post_json(f"{self._server}/api/runs/{self.run_id}/batch", {**batch, "instance": self._instance})
             self._last_sent = time.monotonic()
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
+            if exc.code in (404, 409):  # run silinmiş ya da sunucu başka bir veritabanıyla açılmış
                 self.run_id, self._online = None, False
                 self._buffer(batch)
             else:
@@ -301,6 +315,18 @@ class Panel:
             self._warned_offline = True
             _warn(f"panel sunucusuna ulaşılamıyor; veriler {self.buffer_path} dosyasında biriktiriliyor")
 
+    def _set_aside_old_buffer(self) -> None:
+        """Önceki bir oturumdan kalan yedek bu run'a karışmasın (eski durum/metrikler); yanına taşınır."""
+        if not self.buffer_path.exists():
+            return
+        target = self.buffer_path.with_name(f".rlpanel_buffer.{time.strftime('%Y%m%d-%H%M%S')}.jsonl")
+        try:
+            self.buffer_path.rename(target)
+        except OSError as exc:
+            _warn(f"eski yedek dosya taşınamadı ({exc})")
+            return
+        _warn(f"önceki oturumdan kalan yedek {target} olarak saklandı; panelde 'Log yükle' ile yükleyebilirsin")
+
     def _replay_buffer(self) -> None:
         path = self.buffer_path
         if not path.exists():
@@ -315,9 +341,9 @@ class Panel:
             if op.get("op") != "batch":
                 continue
             try:
-                http.post_json(f"{self._server}/api/runs/{self.run_id}/batch", op["batch"])
+                http.post_json(f"{self._server}/api/runs/{self.run_id}/batch", {**op["batch"], "instance": self._instance})
             except urllib.error.HTTPError as exc:
-                if exc.code != 404:
+                if exc.code not in (404, 409):
                     continue  # bu paket hiçbir zaman kabul edilmeyecek; atla
                 self._online, self.run_id, remaining = False, None, lines[index:]
                 break

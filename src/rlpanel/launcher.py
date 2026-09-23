@@ -64,12 +64,15 @@ def ensure_server(server: str | None = None, start: int = DEFAULT_PORT, tries: i
     for port in range(start, start + tries):
         if not port_free(port):
             continue
-        spawn_server(port)
+        process = spawn_server(port)
         url = f"http://127.0.0.1:{port}"
         deadline = time.time() + wait
         while time.time() < deadline:
             if health(url):
                 return url, True
+            if process.poll() is not None:
+                # süreç öldü: çoğunlukla aynı anda başlayan başka bir eğitim portu kaptığı için
+                return (url, False) if health(url) else (None, False)
             time.sleep(0.2)
         return None, False
     return None, False

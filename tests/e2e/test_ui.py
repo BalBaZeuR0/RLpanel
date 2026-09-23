@@ -155,3 +155,15 @@ def test_compare_page_overlays_runs_and_band(page, live_server):
         card.get_by_role("button", name="rollout/ep_rew_mean CSV indir").click()
     header = open(info.value.path(), encoding="utf-8").readline()
     assert "Ortalama ± σ ort" in header
+
+
+def test_home_date_filter_hides_old_runs(page, live_server):
+    import time as _time
+    recent = make_run(live_server.url, name="yeni-run")
+    old = make_run(live_server.url, name="eski-run")
+    live_server.store._write("UPDATE run SET started_at = ? WHERE id = ?", (_time.time() - 40 * 86400, old))
+    page.goto(page.base_url + "/#/")
+    page.locator(f'.run-card[data-id="{old}"]').wait_for()
+    page.select_option('select[aria-label="Tarih filtresi"]', "30")
+    page.locator(f'.run-card[data-id="{old}"]').wait_for(state="detached")
+    assert page.locator(f'.run-card[data-id="{recent}"]').count() == 1

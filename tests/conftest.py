@@ -31,9 +31,9 @@ def server_factory(tmp_path):
 
     handles = []
 
-    def start(port: int | None = None, heartbeat_timeout: float = 30.0):
+    def start(port: int | None = None, heartbeat_timeout: float = 30.0, db: str = "panel.db"):
         port = port or free_port()
-        app = create_app(tmp_path / "panel.db", heartbeat_timeout=heartbeat_timeout)
+        app = create_app(tmp_path / db, heartbeat_timeout=heartbeat_timeout)
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
         thread = threading.Thread(target=server.run, daemon=True)
         thread.start()

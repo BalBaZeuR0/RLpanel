@@ -63,7 +63,6 @@ def test_core_helpers(page):
     assert result["pick"] == "rollout/ep_rew_mean"
 
 
-@pytest.mark.skip(reason="Task 11")
 def test_shell_renders_and_theme_toggles(page):
     page.goto(page.base_url + "/")
     assert page.locator("#conn").get_attribute("data-state") in ("open", "connecting")

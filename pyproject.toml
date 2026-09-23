@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Yerel, canlı RL eğitim paneli"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9"]
+dependencies = ["fastapi>=0.110", "uvicorn>=0.27", "websockets>=12", "python-multipart>=0.0.9"]
 
 [project.optional-dependencies]
 sb3 = ["stable-baselines3>=2.0"]

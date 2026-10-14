@@ -1,0 +1,151 @@
+{
+  "title": "rlpanel — veri akışı",
+  "nodes": {
+    "train": {
+      "label": "RL eğitim kodu\n(SB3 / kendi döngün)",
+      "pos": [
+        0,
+        0
+      ],
+      "kind": "data",
+      "w": 2.4
+    },
+    "cb": {
+      "label": "Panel istemcisi\nmetrik · ilerleme ·\nprint / logging",
+      "pos": [
+        3.4,
+        0
+      ],
+      "kind": "process",
+      "w": 2.4,
+      "h": 1.1
+    },
+    "buf": {
+      "label": "Yerel tampon\n.rlpanel_buffer.jsonl",
+      "pos": [
+        3.4,
+        1.9
+      ],
+      "kind": "data",
+      "w": 2.6
+    },
+    "files": {
+      "label": "Bitmiş loglar\nprogress.csv · tfevents\nresults.json",
+      "pos": [
+        0,
+        3.7
+      ],
+      "kind": "data",
+      "w": 2.4,
+      "h": 1.1
+    },
+    "watch": {
+      "label": "rlpanel watch /\nrlpanel import",
+      "pos": [
+        3.4,
+        3.7
+      ],
+      "kind": "process",
+      "w": 2.4
+    },
+    "api": {
+      "label": "FastAPI sunucu\n(REST + WebSocket)",
+      "pos": [
+        7.2,
+        0
+      ],
+      "kind": "model",
+      "w": 2.6
+    },
+    "db": {
+      "label": "SQLite\n~/.rlpanel/panel.db",
+      "pos": [
+        7.2,
+        1.9
+      ],
+      "kind": "data",
+      "w": 2.6
+    },
+    "ui": {
+      "label": "Tarayıcı paneli\n(canlı grafik, konsol,\nkarşılaştırma)",
+      "pos": [
+        10.9,
+        0
+      ],
+      "kind": "output",
+      "w": 2.8,
+      "h": 1.1
+    },
+    "exp": {
+      "label": "İndir: PNG · SVG ·\nCSV · run .zip",
+      "pos": [
+        10.9,
+        1.9
+      ],
+      "kind": "output",
+      "w": 2.8
+    }
+  },
+  "edges": [
+    [
+      "train",
+      "cb",
+      "PanelCallback"
+    ],
+    [
+      "cb",
+      "api",
+      "HTTP"
+    ],
+    {
+      "from": "cb",
+      "to": "buf",
+      "label": "sunucu kapalıysa",
+      "style": "dashed"
+    },
+    {
+      "from": "buf",
+      "to": "api",
+      "label": "açılınca gönder",
+      "style": "dashed"
+    },
+    [
+      "files",
+      "watch"
+    ],
+    [
+      "watch",
+      "api"
+    ],
+    [
+      "api",
+      "db"
+    ],
+    [
+      "api",
+      "ui",
+      "WebSocket"
+    ],
+    [
+      "db",
+      "exp"
+    ]
+  ],
+  "groups": [
+    {
+      "label": "Eğitim süreci (pip install rlpanel)",
+      "nodes": [
+        "train",
+        "cb",
+        "buf"
+      ]
+    },
+    {
+      "label": "rlpanel serve  ·  127.0.0.1:8765",
+      "nodes": [
+        "api",
+        "db"
+      ]
+    }
+  ]
+}

@@ -13,7 +13,7 @@ dependencies = ["fastapi>=0.110", "uvicorn>=0.27", "websockets>=12", "python-mul
 [project.optional-dependencies]
 sb3 = ["stable-baselines3>=2.0"]
 tb = ["tensorboard>=2.12"]
-dev = ["pytest>=8", "httpx>=0.27", "stable-baselines3>=2.0", "gymnasium>=0.29", "tensorboard>=2.12", "playwright>=1.44"]
+dev = ["pytest>=8", "httpx>=0.27", "stable-baselines3>=2.0", "gymnasium>=0.29", "tensorboard>=2.12", "playwright>=1.44", "pillow>=10", "matplotlib>=3.8"]
 
 [project.scripts]
 rlpanel = "rlpanel.cli:main"

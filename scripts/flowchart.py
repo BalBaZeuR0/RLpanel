@@ -6,6 +6,7 @@ Kullanım:
 Tanım biçimi (koordinatlar ızgara birimi; x sağa, y aşağı doğru artar):
 {
   "title": "Sistem mimarisi",            # isteğe bağlı
+  "lang": "en",                          # isteğe bağlı: lejant dili (tr varsayılan, en)
   "nodes": {
     "veri":  {"label": "Ham video\\n(21 kamera)", "pos": [0, 0], "kind": "data"},
     "emd":   {"label": "EMD", "pos": [2, 0], "kind": "model"},
@@ -39,6 +40,8 @@ KINDS = {
     "decision": ("#FDECEC", "#C53030", "Karar"),
     "external": ("#F2F2F2", "#5A5A5A", "Dış araç / kütüphane"),
 }
+EN_NAMES = {"data": "Data / input", "process": "Processing", "model": "Model / algorithm",
+            "output": "Output / result", "decision": "Decision", "external": "External tool / library"}
 INK = "#1F2328"
 SCALE = 1.15  # ızgara birimi -> inç
 
@@ -134,6 +137,8 @@ def render(spec: dict, out_base: Path) -> list[Path]:
     inv = ax.transData.inverted()
     for k in used_kinds:
         fc, ec, name = KINDS[k]
+        if spec.get("lang") == "en":
+            name = EN_NAMES[k]
         ax.add_patch(FancyBboxPatch((lx, ly - 0.15), 0.42, 0.3, boxstyle="round,pad=0,rounding_size=0.06",
                                     fc=fc, ec=ec, lw=1.2))
         t = ax.text(lx + 0.55, ly, name, fontsize=8.5, color="#57606A", va="center")

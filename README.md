@@ -1,112 +1,114 @@
 # rlpanel
 
-**RL eğitimlerini terminal yerine tarayıcıda, canlı grafiklerle izleyen ve karşılaştıran yerel bir panel.**
+**A local dashboard that lets you watch and compare RL training runs in the browser with live charts, instead of in the terminal.**
 
-Eğitim koduna tek satır (`PanelCallback`) eklenince tarayıcıda bir panel açılır. Panelde ilerleme yüzdesi,
-anlık reward ve loglanan **her** metriğin grafiği ile canlı konsol bulunur. Bitmiş eğitimler sonradan
-yüklenebilir, seed'ler üst üste karşılaştırılabilir, her grafik PNG / SVG / CSV olarak indirilebilir.
-Amaç, MTA Yapay Zeka Merkezi'ndeki RL projelerinin (DroneTrackingRL, LunarRocket …) ortak izleme aracı olmaktır.
+Adding a single line (`PanelCallback`) to your training code opens a dashboard in the browser. It shows the
+progress percentage, the current reward, a chart of **every** logged metric, and a live console. Finished runs
+can be loaded later, seeds can be overlaid for comparison, and every chart can be downloaded as PNG / SVG / CSV.
+The goal is a shared monitoring tool for the RL projects at the MTA Artificial Intelligence Center
+(DroneTrackingRL, LunarRocket …). The interface is currently in Turkish.
 
-![rlpanel canlı eğitim ekranı](assets/demo.gif)
+![rlpanel live training view](assets/demo.gif)
 
-*Demo-CartPole PPO eğitimi sürerken panel: ilerleme %6 → %85, reward eğrisi ve kartlar canlı güncelleniyor.*
+*The dashboard while a Demo-CartPole PPO run is training: progress goes from 6% to 85%, and the reward curve and cards update live.*
 
-## Özet
+## Overview
 
 | | |
 |---|---|
-| **Problem** | RL eğitim çıktısı terminalde akıp kayboluyor; seed'leri ve önceki deneyleri yan yana görmek zor. |
-| **Yöntem** | Eğitim sürecindeki küçük istemci metrikleri HTTP ile yerel FastAPI sunucusuna yollar. Sunucu SQLite'a yazar ve WebSocket ile tarayıcıya yayınlar. Sunucu kapalıysa veriler yerel tampona yazılıp sonra gönderilir. |
-| **Simülasyon / donanım** | Ortamdan bağımsız (Gymnasium / Stable-Baselines3 ya da kendi döngün). GPU gerekmez; Windows 11 ve Python 3.12 ile test edildi. |
-| **Makale** | Yok (araç projesi). |
+| **Problem** | RL training output scrolls past in the terminal and is lost; seeds and earlier experiments are hard to view side by side. |
+| **Method** | A small client inside the training process sends metrics over HTTP to a local FastAPI server. The server writes them to SQLite and broadcasts them to the browser over WebSocket. If the server is down, data are written to a local buffer and sent later. |
+| **Simulation / hardware** | Environment-agnostic (Gymnasium / Stable-Baselines3 or your own loop). No GPU needed; tested on Windows 11 with Python 3.12. |
+| **Paper** | None (tool project). |
 
-### Sistem mimarisi
+### System architecture
 
-![rlpanel blok şeması](assets/architecture.png)
+![rlpanel block diagram](assets/architecture.png)
 
-Eğitim süreci yalnızca HTTP istemcisi içerir, sunucunun iç yapısını bilmez. `rlpanel serve` ayrı bir süreçtir
-ve birden çok eğitimi aynı anda dinleyebilir. Bitmiş loglar (`progress.csv`, tfevents, `results.json`)
-`rlpanel watch` / `rlpanel import` ile aynı veritabanına alınır.
+The training process contains only an HTTP client and knows nothing about the server's internals.
+`rlpanel serve` is a separate process and can listen to several runs at once. Finished logs (`progress.csv`,
+tfevents, `results.json`) are brought into the same database with `rlpanel watch` / `rlpanel import`.
 
-## Seçilmiş sonuçlar
+## Selected results
 
-### Sonuç 1: Canlı eğitim sayfası
+### Result 1: Live training page
 
-Bir run'ın üst kartları (ilerleme, anlık / en iyi reward, başarı oranı, learning rate, süre) ve metrik
-grafikleri. Her grafiğin PNG / SVG / CSV indirme düğmesi vardır; konsol sekmesinde `print`/`logging` çıktısı akar.
+A run's top cards (progress, current / best reward, success rate, learning rate, elapsed time) and its metric
+charts. Every chart has PNG / SVG / CSV download buttons; the console tab streams `print`/`logging` output.
 
-![Canlı run sayfası](plots/canli_run.png)
+![Live run page](plots/canli_run.png)
 
-### Sonuç 2: Seed karşılaştırması
+### Result 2: Seed comparison
 
-Aynı deneyin üç seed'i (`ppo/seed_0..2`) üst üste çiziliyor. "Ortalama ± σ" seçeneği bunları tek bant hâlinde gösterir.
+Three seeds of the same experiment (`ppo/seed_0..2`) drawn on top of each other. The "mean ± σ" option shows them as a single band.
 
-![Karşılaştırma sayfası](plots/karsilastirma.png)
+![Comparison page](plots/karsilastirma.png)
 
-### Sonuç 3: Eğitimler listesi
+### Result 3: Run list
 
-Tüm projeler ve run'lar durumlarıyla (Canlı, Bitti, Çöktü, Durduruldu, Yanıt vermiyor) tek listede.
+All projects and runs with their status (live, finished, crashed, stopped, not responding) in one list.
 
-![Ana sayfa](plots/ana_sayfa.png)
+![Home page](plots/ana_sayfa.png)
 
-*Tüm ekran görüntüleri `scripts/demo.py` verisiyle, `plots/` klasöründe.*
+*All screenshots use the data from `scripts/demo.py` and are in `plots/`.*
 
-## Kurulum
+## Installation
 
-### Gereksinimler
+### Requirements
 
-- Windows 10/11, Linux veya macOS
-- Python ≥ 3.10 (3.12 ile test edildi)
-- GPU gerekmez; isteğe bağlı: `stable-baselines3` (`[sb3]`), `tensorboard` (`[tb]`)
+- Windows 10/11, Linux or macOS
+- Python ≥ 3.10 (tested with 3.12)
+- No GPU needed; optional: `stable-baselines3` (`[sb3]`), `tensorboard` (`[tb]`)
 
-### Adımlar
+### Steps
 
-Başka bir projeye bağımlılık olarak eklemek için `pyproject.toml` dosyasına şunu yaz:
+To add it as a dependency of another project, put this in its `pyproject.toml`:
 
 ```toml
 dependencies = ["rlpanel[sb3] @ git+https://github.com/BalBaZeuR0/RLpanel"]
 ```
 
-Geliştirme için temiz bir makinede:
+For development, on a clean machine:
 
 ```bash
 git clone https://github.com/BalBaZeuR0/RLpanel.git
 cd RLpanel
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-python -m pytest -q -m "not slow and not e2e"           # kurulum kontrolü
+python -m pytest -q -m "not slow and not e2e"           # installation check
 ```
 
-Beklenen çıktı:
+Expected output:
 
 ```
 90 passed, 18 deselected in 21.14s
 ```
 
-## Kullanım
+## Usage
 
-### Kendi eğitiminde
+### In your own training
 
 ```python
 from rlpanel import Panel, PanelCallback
 
-panel = Panel(project="Projem", run="seed0", config=cfg)      # panel yoksa açar, tarayıcıyı açar
+panel = Panel(project="MyProject", run="seed0", config=cfg)   # starts the dashboard if needed, opens the browser
 model.learn(total_timesteps=100_000, callback=PanelCallback(panel))
-panel.log({"eval/basari": 0.93}, step=model.num_timesteps)    # kendi metriğin
-panel.result({"final": 0.93})                                 # Sonuçlar sekmesi
+panel.log({"eval/success": 0.93}, step=model.num_timesteps)   # your own metric
+panel.result({"final": 0.93})                                 # Results tab
 panel.finish()
 ```
 
-Tek satırlık kısa yol: `model.learn(..., callback=PanelCallback(project="Projem", run="seed0"))`.
-SB3 kullanmıyorsan `panel.log({...}, step=t)` ve `panel.progress(t, toplam)` yeterli.
+One-line shortcut: `model.learn(..., callback=PanelCallback(project="MyProject", run="seed0"))`.
+If you don't use SB3, `panel.log({...}, step=t)` and `panel.progress(t, total)` are enough.
 
-### Hazır demoyu çalıştırma
+### Run the bundled demo
 
 ```bash
 python scripts/demo.py
 ```
 
-Beklenen çıktı (tarayıcıda panel açılır; önce 3 bitmiş seed, sonra canlı akan 4. run):
+Expected output (the dashboard opens in the browser: first 3 finished seeds, then a 4th run streaming live;
+the script prints in Turkish, "adım" = step):
 
 ```
 Canlı demo: http://127.0.0.1:8765/#/run/4
@@ -116,67 +118,67 @@ adım 16384: reward 289.6
 ...
 ```
 
-### Komutlar
+### Commands
 
-| Komut | Ne yapar |
+| Command | What it does |
 |---|---|
-| `rlpanel serve` | Paneli açar (http://127.0.0.1:8765) |
-| `rlpanel serve --host 0.0.0.0` | Uzak makinelerden erişilebilir yapar |
-| `rlpanel watch <klasör>` | SB3 `progress.csv` / tfevents / `results.json` dosyalarını canlı izler |
-| `rlpanel import <dosya> --project P --run r` | Bitmiş eğitimin logunu yükler |
+| `rlpanel serve` | Opens the dashboard (http://127.0.0.1:8765) |
+| `rlpanel serve --host 0.0.0.0` | Makes it reachable from remote machines |
+| `rlpanel watch <folder>` | Watches SB3 `progress.csv` / tfevents / `results.json` files live |
+| `rlpanel import <file> --project P --run r` | Loads the log of a finished run |
 
-Hata olursa run **Çöktü**, Ctrl+C'de **Durduruldu** olarak işaretlenir. 30 sn boyunca veri gelmezse **Yanıt vermiyor** olur.
-Sunucu kapalıysa veriler `.rlpanel/<proje>-<run>/.rlpanel_buffer.jsonl` dosyasında birikir ve sunucu açılınca otomatik gönderilir.
+If an error occurs the run is marked **crashed**, and on Ctrl+C **stopped**. If no data arrive for 30 s it becomes **not responding**.
+If the server is down, data pile up in `.rlpanel/<project>-<run>/.rlpanel_buffer.jsonl` and are sent automatically once the server is up.
 
-### Ortam değişkenleri
+### Environment variables
 
-| Değişken | Etki |
+| Variable | Effect |
 |---|---|
-| `RLPANEL_SERVER=http://ip:8765` | Başka makinedeki panele gönder |
-| `RLPANEL_NO_BROWSER=1` | Tarayıcı açma |
-| `RLPANEL_DISABLE=1` | Paneli tamamen kapat (testler, CI) |
-| `RLPANEL_HOME` / `RLPANEL_DB` | Veri klasörü / veritabanı yolu (varsayılan `~/.rlpanel/panel.db`) |
+| `RLPANEL_SERVER=http://ip:8765` | Send to a dashboard on another machine |
+| `RLPANEL_NO_BROWSER=1` | Don't open the browser |
+| `RLPANEL_DISABLE=1` | Turn the dashboard off completely (tests, CI) |
+| `RLPANEL_HOME` / `RLPANEL_DB` | Data folder / database path (default `~/.rlpanel/panel.db`) |
 
-## Sonuçları yeniden üretme
+## Reproducing the results
 
-| Şekil | Komut |
+| Figure | Command |
 |---|---|
 | `assets/demo.gif`, `plots/canli_run.png`, `plots/karsilastirma.png`, `plots/ana_sayfa.png` | `python -m playwright install chromium && python scripts/readme_gorselleri.py` |
 | `assets/architecture.png` | `python scripts/flowchart.py assets/architecture.json` |
 
-Görsel betiği geçici bir veritabanı kullanır, `~/.rlpanel` dosyalarına dokunmaz.
+The image script uses a temporary database and does not touch the files in `~/.rlpanel`.
 
-## Proje yapısı
+## Project structure
 
 ```
 RLpanel/
-├── assets/              # README görselleri (demo.gif, architecture.png + .json kaynağı)
-├── docs/                # tasarım ve uygulama planı
-├── plots/               # README ekran görüntüleri
+├── assets/              # README images (demo.gif, architecture.png + .json source)
+├── docs/                # design and implementation plan
+├── plots/               # README screenshots
 ├── scripts/
-│   ├── demo.py          # demo verisi: 3 bitmiş seed + canlı run
-│   ├── readme_gorselleri.py  # assets/ ve plots/ görsellerini üretir
-│   └── flowchart.py     # mimari şemasını JSON'dan çizer
+│   ├── demo.py          # demo data: 3 finished seeds + a live run
+│   ├── readme_gorselleri.py  # produces the assets/ and plots/ images
+│   └── flowchart.py     # draws the architecture diagram from JSON
 ├── src/rlpanel/
-│   ├── client.py        # Panel: run başlat, metrik/log gönder, tampon
+│   ├── client.py        # Panel: start a run, send metrics/logs, buffer
 │   ├── sb3.py           # PanelCallback (Stable-Baselines3)
-│   ├── server/          # FastAPI uygulaması, SQLite deposu, içe/dışa aktarma, klasör izleme
-│   └── web/             # derleme gerektirmeyen arayüz (uPlot)
-├── tests/               # birim + e2e (Playwright) testler
+│   ├── server/          # FastAPI app, SQLite store, import/export, folder watching
+│   └── web/             # build-free interface (uPlot)
+├── tests/               # unit + e2e (Playwright) tests
 ├── pyproject.toml
 └── README.md
 ```
 
-## Atıf, lisans, iletişim
+## Citation, license, contact
 
 ```bibtex
 @misc{rlpanel2026,
-  title  = {rlpanel: RL eğitimleri için yerel, canlı izleme paneli},
+  title  = {rlpanel: A local, live monitoring dashboard for RL training},
   author = {Öztürk, Emir},
   year   = {2026},
   howpublished = {\url{https://github.com/BalBaZeuR0/RLpanel}}
 }
 ```
 
-Lisans dosyası henüz eklenmedi, kullanım için iletişime geçin.
-İletişim: [@BalBaZeuR0](https://github.com/BalBaZeuR0), MTA Yapay Zeka Merkezi.
+No license file has been added yet; please get in touch before reusing the code.
+Contact: [@BalBaZeuR0](https://github.com/BalBaZeuR0), MTA Artificial Intelligence Center.
